@@ -73,9 +73,12 @@ ts = pd.read_parquet("processed/discharge_clean.parquet")  # pyarrow gerekli
 ## 3. Bilmen gerekenler (önemli)
 
 1. **`cycles_left` gerçek RUL değil.** Değeri şu formülle hesaplanmış: `son deşarjın cycle_number'ı − bu döngünün cycle_number'ı`. Yani "deney durdurulana kadar kalan döngü" sayısı.
-   - NASA, deneylerin kapasite %30 düşünce (2 Ah → 1.4 Ah) durdurulduğunu söylüyor. Ama B0025–B0032 gibi bataryalar 1.56–1.77 Ah'te durdurulmuş.
-   - Bu yüzden `cycles_left` değerleri bataryalar arasında doğrudan karşılaştırılamaz.
-   - Alternatif hedef: `capacity_ah` 1.4 Ah'in altına inene kadar kalan döngü sayısı.
+   - NASA, deneylerin kapasite %30 düşünce (2 Ah → 1.4 Ah) durdurulduğunu söylüyor. Veri iki yönde de buna uymuyor:
+     - **Geç durdurulanlar:** B0005 126. döngüde 1.4 Ah'in altına düşmüş ama deney 169. döngüye kadar sürmüş. Ömrü bittiği döngüde `cycles_left` hâlâ 43 (B0006'da 59, B0018'de 35).
+     - **Erken durdurulanlar:** B0025–B0032 hâlâ 1.56–1.77 Ah'teyken durdurulmuş.
+   - Bu yüzden `cycles_left` ile eğitilen model "bataryanın ne kadar ömrü kaldı" sorusunu değil, "deney ne zaman durduruldu" sorusunu öğrenir.
+   - **Önerilen RUL hedefi:** `kapasitenin 1.4 Ah altına ilk düştüğü cycle_number − bu cycle_number`. Bunu sadece 1.4 Ah'in altına gerçekten düşen bataryalarda kullan (örneğin B0005, B0006, B0018).
+   - Bazı bataryalarda bu eşik anlamsız. B0049–B0052'nin kapasitesi baştan 1.4 Ah'in altında (farklı test profili). B0033'ün ilk ölçümü (0.07 Ah) de hatalı; eşiği hesaplarken atla.
 2. **Bataryalar aynı koşullarda test edilmedi.** Ortam sıcaklıkları 4, 22, 24, 43 ve 44 °C. B0038–B0040 ve B0042–B0044 bataryaları iki farklı sıcaklıkta test edildi. Döngü sayısı bataryadan bataryaya 4 ile 197 arasında değişiyor. ML'de bataryaları **gruplara göre** ayır (train/test'te aynı batarya iki tarafta olmasın, `GroupKFold`).
 3. **`charge_clean.parquet` dosyasında `cycles_left = -1` olan satırlar var.** Bunlar son deşarjdan sonra yapılan şarj döngüleri. RUL eğitiminde kullanma.
 4. **Yüksek kapasite değerleri bilerek atılmadı.** B0006, B0036 ve B0049–B0051'de 2 Ah'in üstünde kapasite var (en fazla 2.64 Ah). Bunlar fiziksel olarak imkânsız değil. Grafikte tuhaf görünürlerse not düş.
