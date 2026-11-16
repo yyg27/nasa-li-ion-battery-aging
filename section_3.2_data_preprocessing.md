@@ -66,6 +66,8 @@ The profile revealed several types of invalid records. Each was handled with a s
 
 After cleaning, the dataset contains **34 batteries, 2,738 valid discharge cycles, 2,812 charge cycles and 1,933 impedance cycles**. A few capacity values above the 2 Ah nominal rating (at most 2.64 Ah, cells B0006, B0036 and B0049–B0051) were kept. They are most likely real measurements rather than logging errors. The most extreme case, B0050, shows an abuse event: in `cycle_id` 10 the cell was discharged down to 0.35 V (capacity 0.03 Ah, the lowest value in the dataset), in the following charge cycle (`cycle_id` 12) it was overcharged (median voltage 4.54 V), and the next discharge delivered 2.64 Ah. These points do not reflect normal aging, so the machine learning stage (Section 3.4) should consider excluding them.
 
+The first discharge of a battery also needs care. In 23 batteries the discharge with `cycle_number` 0 was carried out before the first charge (charge cycles start at `cycle_number` 1). It therefore measures the charge the cell had when it arrived, not its full capacity, and in 19 of these 23 batteries it is lower than the next cycle (for example 0.07 Ah versus 0.69 Ah for B0033). These cycles were kept in the cleaned data because they are valid measurements, but they should be left out when capacity is used as an aging indicator.
+
 ## 3.2.4 The `cycles_left` Column
 
 `cycles_left` is the target variable that the Kaggle version provides for remaining useful life (RUL) estimation. It is not documented in the original NASA release, so its definition was reconstructed from the data and then checked against every row:
