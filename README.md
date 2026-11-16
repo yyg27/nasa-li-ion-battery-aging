@@ -34,7 +34,7 @@ batteries: 34, valid discharge cycles: 2738, impedance cycles: 1933, charge cycl
 ```
 
 - **Süre ve RAM:** ~5–10 saniye sürer, en fazla ~3 GB RAM kullanır. 2 GB'ın altında bellek yetmez.
-- **Uyumluluk:** Python 3.10–3.14 ile pandas 2.3 veya 3.x çalışır.
+- **Uyumluluk:** Gerekli paketler Python 3.10–3.14 için Windows/Linux/macOS'ta mevcut. Betik Python 3.14 üzerinde pandas 2.3.3 ve 3.1.1 ile test edildi.
 - **Hata durumu:** Betik sonunda tutarlılık kontrolleri yapar. Bir kontrol bozulursa `check failed: ...` mesajıyla durur ve yarım sonuç üretmez.
 
 ## 2. Çıktılar (`processed/`)
@@ -66,7 +66,7 @@ Bütün dosyalar aynı anahtarı paylaşır: **(`battery_id`, `cycle_id`)**. Tab
 ```python
 import pandas as pd
 c = pd.read_csv("processed/discharge_cycles.csv", parse_dates=["start_time"])
-c[c.battery_id == "B0005"].plot(x="cycle_number", y="capacity_ah")
+c[c.battery_id == "B0005"].plot(x="cycle_number", y="capacity_ah")  # grafik için: pip install matplotlib
 ts = pd.read_parquet("processed/discharge_clean.parquet")  # pyarrow gerekli
 ```
 
