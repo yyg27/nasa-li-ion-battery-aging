@@ -106,6 +106,7 @@ Mantarain. (2026). *NASA Li-ion battery aging datasets* (Version 2) [Data set]. 
 McKinney, W. (2010). Data structures for statistical computing in Python. In S. van der Walt & J. Millman (Eds.), *Proceedings of the 9th Python in Science Conference* (pp. 56–61). https://doi.org/10.25080/Majora-92bf1922-00a
 
 Saha, B., & Goebel, K. (2007). *Battery data set* [Data set]. NASA Prognostics Data Repository, NASA Ames Research Center. https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+
 ## Abbreviations (to send to the editor)
 
 | Abbreviation | Meaning |
