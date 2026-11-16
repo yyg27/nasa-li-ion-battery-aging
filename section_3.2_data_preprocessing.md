@@ -46,7 +46,7 @@ The files were loaded with pandas (McKinney, 2010) and NumPy (Harris et al., 202
 
 ## 3.2.3 Data Cleaning
 
-The profile revealed several types of invalid records. Each was handled with a simple rule chosen from the physical limits of the cells (Table 3.3). Whole cycles were removed from `meta.csv` first. The removed cycles were then removed from the time-series files by an inner join on (`battery_id`, `cycle_id`). Cycles removed later because of their time-series content (steps 6 and 9) were also removed from the metadata. The script ends by checking that every output file lists exactly the same cycles, and it stops with an error if they do not.
+The profile revealed several types of invalid records. Each was handled with a simple rule chosen from the physical limits of the cells (Table 3.3). Whole cycles were removed from `meta.csv` first. The removed cycles were then removed from the time-series files by an inner join on (`battery_id`, `cycle_id`). Cycles removed later because of their time-series content (steps 6, 9 and 11) were also removed from the metadata. The script ends by checking that every output file lists exactly the same cycles, and it stops with an error if they do not.
 
 **Table 3.3.** Cleaning steps and their effect.
 
@@ -54,15 +54,17 @@ The profile revealed several types of invalid records. Each was handled with a s
 |---|---|---|---|
 | 1 | Drop cycles with `complete = False` | Interrupted runs; all 25 such discharge cycles also have no capacity value | 34 cycles (25 discharge, 9 impedance) |
 | 2 | Drop discharge cycles with `capacity_ah ≤ 0` | A capacity of 0 Ah is physically impossible for a cell that still works and points to a logging failure | 19 cycles |
-| 3 | Set R<sub>e</sub> or R<sub>ct</sub> values ≤ 0 Ω or > 10 Ω to missing | Typical values are 0.05–0.3 Ω; the invalid values reach magnitudes of 10<sup>15</sup> Ω or are negative, which shows the impedance model fit failed. They belong to the same 14 cycles that are removed in step 9 | 14 values each |
+| 3 | Set R<sub>e</sub> or R<sub>ct</sub> values ≤ 0 Ω or > 10 Ω to missing | Typical values are 0.05–0.3 Ω; the invalid values reach magnitudes of 10<sup>15</sup> Ω or are negative, which shows the impedance model fit failed. They belong to the same 14 cycles that are removed in step 11 | 14 values each |
 | 4 | Drop discharge time-series rows of cycles removed in steps 1–2 | Keeps the files consistent | 8,255 rows |
 | 5 | Drop discharge rows with `voltage_load` > 10 V | Load voltages up to 97 V are logging glitches. All 4 such rows belonged to cycles already removed in step 4 | 0 rows (after step 4) |
 | 6 | Drop discharge cycles with fewer than 10 samples, from both the time series and the metadata | Aborted runs; each of these cycles contains only 9 measurements and a capacity of only about 0.05–0.06 Ah | 12 cycles (108 rows) |
 | 7 | Drop charge rows with missing voltage, current or temperature | Sensor dropouts; too few rows to justify interpolation | 257 rows |
-| 8 | Drop impedance rows of incomplete cycles | Consistency with step 1 | 432 rows |
-| 9 | Drop impedance spectrum points with \|Z\| > 10 Ω | Typical \|Z\| is about 0.2 Ω; the extreme values come from measurement artifacts. All 48 points of 14 cycles were invalid, so these cycles were also removed from the metadata | 672 rows (14 cycles) |
+| 8 | Drop charge rows with `voltage_measured` > 5 V | Single-sample sensor spikes of 8.1–8.4 V at the start of `cycle_id` 84 of B0005–B0007; a cell never exceeds about 4.2 V in normal use, and the highest remaining readings are short peaks of about 4.98 V in B0050 and B0052 | 3 rows |
+| 9 | Drop charge cycles with fewer than 10 samples, from both the time series and the metadata | Same rule as step 6; the final charge cycle of B0005–B0007 was aborted after 5 measurements | 3 cycles (15 rows) |
+| 10 | Drop impedance rows of incomplete cycles | Consistency with step 1 | 432 rows |
+| 11 | Drop impedance spectrum points with \|Z\| > 10 Ω | Typical \|Z\| is about 0.2 Ω; the extreme values come from measurement artifacts. All 48 points of 14 cycles were invalid, so these cycles were also removed from the metadata | 672 rows (14 cycles) |
 
-After cleaning, the dataset contains **34 batteries, 2,738 valid discharge cycles, 2,815 charge cycles and 1,933 impedance cycles**. A few capacity values above the 2 Ah nominal rating (at most 2.64 Ah, cells B0006, B0036 and B0049–B0051) were kept. They are not physically impossible, but they should be checked once the capacity curves have been plotted (Section 3.3).
+After cleaning, the dataset contains **34 batteries, 2,738 valid discharge cycles, 2,812 charge cycles and 1,933 impedance cycles**. A few capacity values above the 2 Ah nominal rating (at most 2.64 Ah, cells B0006, B0036 and B0049–B0051) were kept. They are most likely real measurements rather than logging errors. The most extreme case, B0050, shows an abuse event: in `cycle_id` 10 the cell was discharged down to 0.35 V (capacity 0.03 Ah, the lowest value in the dataset), in the following charge cycle (`cycle_id` 12) it was overcharged (median voltage 4.54 V), and the next discharge delivered 2.64 Ah. These points do not reflect normal aging, so the machine learning stage (Section 3.4) should consider excluding them.
 
 ## 3.2.4 The `cycles_left` Column
 
@@ -70,7 +72,7 @@ After cleaning, the dataset contains **34 batteries, 2,738 valid discharge cycle
 
 $$\text{cycles\_left} = \max_{\text{discharge}}(\text{cycle\_number}) - \text{cycle\_number}$$
 
-In other words, `cycles_left` is the number of discharge cycles remaining until the **last discharge cycle that was recorded** for that battery. It reaches 0 at the final discharge. The formula held for every row of both files. In `charge.csv`, 41,076 rows (the final charge cycle of 31 of the 34 batteries) have `cycles_left = −1`, because the test ended with a charge after the last discharge. These rows were kept for completeness but should not be used as RUL training data.
+In other words, `cycles_left` is the number of discharge cycles remaining until the **last discharge cycle that was recorded** for that battery. It reaches 0 at the final discharge. The formula held for every row of both files. In `charge.csv`, 41,061 rows (the final charge cycle of 28 of the 34 batteries) have `cycles_left = −1`, because the test ended with a charge after the last discharge. These rows were kept for completeness but should not be used as RUL training data.
 
 This definition has an important limitation. The NASA documentation defines end of life (EOL) as a 30% fade in rated capacity, from 2 Ah to 1.4 Ah, and states that the experiments were stopped at this point (Saha & Goebel, 2007). The cleaned data does not match this description in either direction. Some cells were cycled well **past** EOL: B0005, for example, first fell below 1.4 Ah at cycle 126 but was tested until cycle 169, so `cycles_left` is still 43 at the cycle where the cell had already reached EOL (59 for B0006, 35 for B0018). Other cells were stopped **before** EOL: B0025–B0032 ended with capacities between 1.56 and 1.77 Ah. `cycles_left` therefore counts down to the point where the experiment was **stopped**, not to the end of the cell's useful life. `cycles_left` is therefore a valid target for the RUL models in Section 3.4, but its values cannot be compared directly between batteries. A threshold-based RUL computed from `capacity_ah` could be used as an alternative target.
 

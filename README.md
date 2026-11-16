@@ -30,7 +30,7 @@ Veri başka bir yerdeyse yolunu argüman olarak ver: `python preprocessing.py "D
 
 Doğru çalıştıysa son satırlar şöyle olmalı:
 ```
-batteries: 34, valid discharge cycles: 2738, impedance cycles: 1933, charge cycles: 2815
+batteries: 34, valid discharge cycles: 2738, impedance cycles: 1933, charge cycles: 2812
 ```
 
 - **Süre ve RAM:** ~5–10 saniye sürer, en fazla ~3 GB RAM kullanır. 2 GB'ın altında bellek yetmez.
@@ -81,7 +81,9 @@ ts = pd.read_parquet("processed/discharge_clean.parquet")  # pyarrow gerekli
    - Bazı bataryalarda bu eşik anlamsız. B0049–B0052'nin kapasitesi baştan 1.4 Ah'in altında (farklı test profili). B0033'ün ilk ölçümü (0.07 Ah) de hatalı; eşiği hesaplarken atla.
 2. **Bataryalar aynı koşullarda test edilmedi.** Ortam sıcaklıkları 4, 22, 24, 43 ve 44 °C. B0038–B0040 ve B0042–B0044 bataryaları iki farklı sıcaklıkta test edildi. Döngü sayısı bataryadan bataryaya 4 ile 197 arasında değişiyor. ML'de bataryaları **gruplara göre** ayır (train/test'te aynı batarya iki tarafta olmasın, `GroupKFold`).
 3. **`charge_clean.parquet` dosyasında `cycles_left = -1` olan satırlar var.** Bunlar son deşarjdan sonra yapılan şarj döngüleri. RUL eğitiminde kullanma.
-4. **Yüksek kapasite değerleri bilerek atılmadı.** B0006, B0036 ve B0049–B0051'de 2 Ah'in üstünde kapasite var (en fazla 2.64 Ah). Bunlar fiziksel olarak imkânsız değil. Grafikte tuhaf görünürlerse not düş.
+4. **Yüksek kapasite değerleri bilerek atılmadı.** B0006, B0036 ve B0049–B0051'de 2 Ah'in üstünde kapasite var (en fazla 2.64 Ah). Büyük ihtimalle gerçek ölçümler, kayıt hatası değil (B0050 için kanıtlandı).
+   - **B0050'de bir hasar olayı var:** `cycle_id` 10'da batarya 0.35 V'a kadar boşaltılmış (kapasite 0.03 Ah), sonraki şarjda (`cycle_id` 12) aşırı yüklenmiş (~4.54 V), bir sonraki deşarjda kapasite 2.64 Ah çıkmış.
+   - Bu noktalar normal yaşlanmayı göstermiyor. ML'de bu döngüleri dışarıda bırakmayı düşün.
 5. **Temizlik kuralları** `preprocessing.py` dosyasının başındaki sabitlerle belirleniyor: `R_MAX`, `V_LOAD_MAX`, `MIN_ROWS`. Hangi adımda neyin neden atıldığı tezdeki **Table 3.3**'te yazıyor. Betik çalışınca da aynı tabloyu ekrana basar.
 
 ## 4. Neler doğrulandı

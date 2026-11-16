@@ -1,7 +1,7 @@
 """Section 3.2 Data Preprocessing - NASA Li-ion Battery Aging Dataset (Kaggle: mantarain).
 
 Loads charge/discharge/impedance/meta CSVs, cleans them, verifies the cycles_left label
-and writes analysis-ready files to ./processed. Prints a cleaning log used in the report.
+and writes analysis-ready files to processed/ next to this script. Prints a cleaning log used in the report.
 
 Requirements: pip install pandas numpy pyarrow
 Usage: python preprocessing.py [data_dir]   (default: nasa-li-ion-battery-aging-datasets)
@@ -17,6 +17,7 @@ DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "nasa-li-ion-battery-a
 OUT = HERE / "processed"
 R_MAX = 10.0      # ohm; real Re/Rct/|Z| values are ~0.05-0.3 ohm, anything above is a fitting/sensor error
 V_LOAD_MAX = 10.0  # V; load voltage never exceeds ~4.2 V, larger values are logging glitches
+V_CELL_MAX = 5.0  # V; real readings stay below 5 V (max ~4.98 V: short peaks in B0050/B0052), 8 V readings are sensor spikes
 MIN_ROWS = 10      # discharge cycles with fewer samples were aborted
 KEYS = ["battery_id", "cycle_id"]
 log = []
@@ -79,6 +80,15 @@ ch = pd.read_csv(DATA / "charge.csv", engine="pyarrow")
 n = len(ch)
 ch = ch.dropna(subset=["voltage_measured", "current_measured", "temperature_measured"])
 note("charge: drop rows with missing sensor values", n, len(ch))
+n = len(ch)
+ch = ch[ch["voltage_measured"] <= V_CELL_MAX]
+note(f"charge: drop rows with voltage_measured > {V_CELL_MAX} V", n, len(ch))
+n = len(ch)
+ch = ch[ch.groupby(KEYS)["elapsed_seconds"].transform("size") >= MIN_ROWS]
+note(f"charge: drop cycles with < {MIN_ROWS} samples", n, len(ch))
+n = len(meta)
+meta = keep_cycles(meta, "charge", ch)
+note(f"meta: drop the charge cycles removed above (< {MIN_ROWS} samples)", n, len(meta))
 
 # ---------- impedance ----------
 imp = pd.read_csv(DATA / "impedance.csv")
@@ -119,6 +129,7 @@ impedance_cycles = meta.loc[meta.cycle_type == "impedance",
 # every output must list the same cycles
 check(len(cycles) == (meta.cycle_type == "discharge").sum() == dis.groupby(KEYS).ngroups, "discharge cycle counts differ")
 check(len(impedance_cycles) == imp.groupby(KEYS).ngroups, "impedance cycle counts differ")
+check((meta.cycle_type == "charge").sum() == ch.groupby(KEYS).ngroups, "charge cycle counts differ")
 
 # ---------- save ----------
 OUT.mkdir(exist_ok=True)
