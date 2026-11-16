@@ -7,6 +7,7 @@ Disiplinlerarası bitirme tezi kapsamında **Bölüm 3.2 Data Preprocessing** ç
 | `preprocessing.py` | Veriyi yükler, temizler, doğrular, `processed/` klasörüne yazar |
 | `section_3.2_data_preprocessing.md` | Tezdeki 3.2 bölümünün İngilizce metni + APA kaynaklar + kısaltmalar |
 | `requirements.txt` | Gerekli Python paketleri |
+| `talimatlar/` | Ekipteki 7 (görselleştirme) ve 8 (ML) numaralı kişiler için devir notları |
 
 ## 1. Kurulum ve çalıştırma
 
